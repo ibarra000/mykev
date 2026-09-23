@@ -10,7 +10,7 @@ whole backbone instead (kev.full_ft: bf16 weights, fp32 masters; several GPUs th
 Batch size is small (variable-length records with custom masks) and gradients are accumulated over --accum micro-batches
 (per rank: a step sees accum x batch x world size records).
 """
-import argparse, contextlib, json, math, os, random, resource, sys, time
+import argparse, contextlib, json, math, os, random, sys, time
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +22,13 @@ from .device import allocated_bytes, default_device, empty_cache, sync
 from .data import EVAL_ONLY, build, augment, load_records, materialize, none_pair, source_seed
 from .suite import SYNTHETIC_SOURCES, digest, load_split, read_json, read_manifest, validate_training, write_json
 from .model import MAX_STATE, MAX_TRAIN_STATE, DecisionModel, fits, load_tokenizer, rows_of, training_context
+
+
+def peak_rss_bytes():
+    """Peak resident set size of this process; None on Windows, which has no `resource` module."""
+    if sys.platform == "win32": return None
+    import resource
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if sys.platform == "darwin" else 1024)
 
 
 # --- losses -----------------------------------------------------------------------------------------------------------
@@ -433,7 +440,7 @@ def main():
                "requested_records": a.epochs * len(reqs), "truncated_records": 0, "rejected_records": 0,
                "optimizer_steps": step, "forward_tokens": tokens_seen * world, "step_seconds": step_seconds, "optimizer_seconds": optimizer_seconds, "world_size": world,
                "weights": meta.weights, "peak_device_bytes": peak_mem, "device": dev, "dtype": a.dtype, "batch": a.batch,
-               "peak_rss_bytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if sys.platform == "darwin" else 1024)})
+               "peak_rss_bytes": peak_rss_bytes()})
     print("saved", a.out, flush=True)
 
 

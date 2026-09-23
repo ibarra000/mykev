@@ -671,6 +671,7 @@ source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
     { name = "datasets" },
+    { name = "filelock" },
     { name = "numpy" },
     { name = "peft" },
     { name = "pydantic" },
@@ -703,6 +704,7 @@ requires-dist = [
     { name = "accelerate", specifier = ">=1.15.0" },
     { name = "datasets", specifier = ">=3.0" },
     { name = "fastapi", marker = "extra == 'serve'", specifier = ">=0.115" },
+    { name = "filelock", specifier = ">=3.13" },
     { name = "mlx-lm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx'", specifier = ">=0.31.3,<0.32" },
     { name = "mlx-lm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'serve'", specifier = ">=0.31.3,<0.32" },
     { name = "numpy", specifier = ">=2.5.3" },

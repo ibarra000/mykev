@@ -1,6 +1,5 @@
 import argparse
 import copy
-import fcntl
 import hashlib
 import json
 import os
@@ -9,6 +8,8 @@ import shutil
 from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
+
+from filelock import FileLock
 
 from kev.composition import DEV_SHAPES, HELD_OUT_KEYS, TEST_SHAPES, TRAIN_SHAPES
 from kev.contrastive import FAMILIES, generate
@@ -88,8 +89,7 @@ def file_lock(path):
     """Hold an exclusive advisory lock on `path` (created if absent) for the block; a second holder waits. Local
     orchestration only: one pull of a study (modal_app.pull_lock), one launch of an arm's reads (kev.rounds)."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with Path(path).open("a", encoding=ENCODING) as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with FileLock(path):   # not fcntl.flock, which is Unix-only; filelock is flock on Unix and msvcrt.locking on Windows
         yield
 
 
@@ -164,7 +164,7 @@ def fetch_partition(directory, filename):
     mirror = read_manifest(directory).get("mirror")
     repo, revision = (mirror["dataset"], mirror["revision"]) if mirror else (SUITES_DATASET, SUITES_REVISION)   # a named mirror pins its own revision
     try:
-        cached = hf_hub_download(repo, str(relative), repo_type="dataset", revision=revision)
+        cached = hf_hub_download(repo, relative.as_posix(), repo_type="dataset", revision=revision)   # Hub paths are posix, local separators are not
     except (RepositoryNotFoundError, GatedRepoError) as e:   # a private mirror answers "not found" to anyone without access
         raise PermissionError(f"{relative} is only in {repo}, which is missing or private to this account; `hf auth login` "
                               "(or HF_TOKEN) with access to it, or ask for it") from e

@@ -25,7 +25,7 @@ PROGRAMS = ["the volunteer driver program", "the apprenticeship", "the rental ag
 
 
 def _day(d):
-    return d.strftime("%B %-d, %Y")
+    return f"{d:%B} {d.day}, {d.year}"   # not %-d: that flag is glibc-only and raises on Windows
 
 
 def _need(facts, *keys):

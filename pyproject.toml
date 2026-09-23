@@ -21,6 +21,7 @@ classifiers = [
 dependencies = [
     "accelerate>=1.15.0",
     "datasets>=3.0",
+    "filelock>=3.13",   # the study lock; already a torch dependency, declared because kev.experiment imports it
     "numpy>=2.5.3",
     "peft>=0.21",
     "pydantic>=2.9",
