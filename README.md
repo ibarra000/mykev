@@ -424,6 +424,8 @@ The original [Kev-0.5B](https://huggingface.co/jaredpalmer/kev-0.5b) used Qwen2.
 - If MPS runs out of memory during training, check that you're running only one job. Don't enable `output_hidden_states` or add tokens with peft's `trainable_token_indices`; both have caused memory problems here.
 - If the playground loads but buttons don't work, use `localhost:3001`. Next.js checks development hostnames. Other hosts need an entry in `allowedDevOrigins` in `playground/next.config.ts`.
 - If dataset loading reports `Dataset scripts are no longer supported`, use `legacy-datasets/banking77`. This repo already uses it.
+- If `torch.cuda.is_available()` is False on Windows, it's the wheel, not the driver: the PyPI `win_amd64` build is CPU-only. `pyproject.toml` sources torch from the cu126 index on `sys_platform == 'win32'`; Linux, macOS and the Modal image resolve as before. cu126 is a floor chosen for Turing and has no Blackwell kernels, so on an RTX 50-series card point that index at cu128 instead.
+- On Windows the Qwen3.5 checkpoints (`kev-9b`, `kev-4b`, `kev-0.8b`) fall back to transformers' reference Gated DeltaNet kernels, because `flash-linear-attention` and Triton have no practical Windows build. They stay correct and get slower: on one GTX 1660 SUPER, `kev-0.8b` scores `evals/smoke-v1` development at a median 119 ms per record against 78 ms for the attention-only `kev-0.6b`. Reach for an attention-only checkpoint when you want local speed, remembering that `kev-0.6b` is the previous generation; 30 records is far too few to price that trade-off.
 
 </details>
 

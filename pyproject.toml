@@ -21,6 +21,7 @@ classifiers = [
 dependencies = [
     "accelerate>=1.15.0",
     "datasets>=3.0",
+    "filelock>=3.13",   # the study lock; already a torch dependency, declared because kev.experiment imports it
     "numpy>=2.5.3",
     "peft>=0.21",
     "pydantic>=2.9",
@@ -59,3 +60,17 @@ markers = ["server: needs a running kev.serve instance (KEV_BASE_URL)"]
 
 [tool.setuptools]
 packages = ["kev"]
+
+# Windows torch comes from the CUDA index: the PyPI win_amd64 wheel is the CPU build, so `uv sync` alone leaves
+# torch.cuda.is_available() False. Linux keeps resolving torch from PyPI, where the wheel is already the CUDA build
+# (modal_app.py builds its image from this pyproject + uv.lock), which is what the marker below protects; `explicit`
+# keeps every other package off this index. cu126 is a floor, not a ceiling: it is the oldest CUDA here that still
+# ships sm_75 (Turing) kernels, and it predates Blackwell, so an sm_120 card needs cu128. The wheels resolve to
+# download-r2.pytorch.org rather than the index host; that is PyTorch's own R2 mirror and every hash is pinned.
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'win32'" }]

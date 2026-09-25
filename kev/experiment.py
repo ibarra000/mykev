@@ -11,7 +11,6 @@ Two execution modes share one code path:
 """
 import argparse
 import copy
-import fcntl
 import gc
 import json
 import os
@@ -25,6 +24,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import torch
+from filelock import FileLock, Timeout
 
 from kev.benchmark import evaluate_records
 from kev.checkpoint import LoadOptions
@@ -124,12 +124,11 @@ def git_commit():
 @contextmanager
 def study_lock():
     (ROOT / "runs").mkdir(exist_ok=True)
-    with (ROOT / "runs/.research.lock").open("a") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise RuntimeError("another research runner owns the GPU queue") from None
-        yield
+    try:
+        with FileLock(ROOT / "runs/.research.lock", timeout=0):   # flock is Unix-only; Timeout is the "held" signal, so other OSErrors keep their errno
+            yield
+    except Timeout:
+        raise RuntimeError("another research runner owns the GPU queue") from None
 
 
 # research screening thresholds; gate_report's policy string is generated from them. The gate *names* ("..._over_5pp",

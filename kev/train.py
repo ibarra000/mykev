@@ -24,6 +24,13 @@ from .suite import SYNTHETIC_SOURCES, digest, load_split, read_json, read_manife
 from .model import MAX_STATE, MAX_TRAIN_STATE, DecisionModel, fits, load_tokenizer, rows_of, training_context
 
 
+def peak_rss_bytes():
+    """Peak resident set size of this process; None on Windows, which has no `resource` module."""
+    if sys.platform == "win32": return None
+    import resource
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if sys.platform == "darwin" else 1024)
+
+
 # --- losses -----------------------------------------------------------------------------------------------------------
 
 def permuted_copy(rec, rng):
@@ -532,7 +539,7 @@ def main():
                "optimizer_steps": step, "forward_tokens": round(tokens_seen), "step_seconds": step_seconds, "optimizer_seconds": optimizer_seconds, "resume_seconds": resume_seconds, "resume_write_seconds": writer.seconds if writer else [], "world_size": world,
                "grad_norm": grad_norm_summary(grad_norms),
                "weights": meta.weights, "peak_device_bytes": peak_mem, "device": dev, "dtype": a.dtype, "batch": a.batch,
-               "peak_rss_bytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if sys.platform == "darwin" else 1024)})
+               "peak_rss_bytes": peak_rss_bytes()})
     print("saved", a.out, flush=True)
 
 

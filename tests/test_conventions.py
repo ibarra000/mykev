@@ -44,6 +44,9 @@ RULES = [
      {"kev/rounds.py", "kev/metrics.py"}),   # kev.metrics.served_at is the scored-rows form the helpers build on
     ("a state's normalised-text hash (text_sha256) is kev.suite.text_digest",
      r"\.casefold\(\)\.split\(\)\)\.encode\(\)", {"kev/suite.py", "kev/data.py"}),   # kev.suite imports kev.data, so kev.data keeps its inline copy
+    ("Unix-only stdlib modules are imported lazily behind a platform guard, never at module scope: a Windows checkout "
+     "must be able to import kev.* far enough to reach --help, and CI runs on ubuntu so nothing else catches this",
+     r"^import [^\n]*\b(fcntl|resource|termios|pwd|grp|posix|syslog)\b|^from (fcntl|resource|termios|pwd|grp|posix|syslog) import", set()),
 ]
 
 
@@ -59,7 +62,7 @@ def test_private_suites_keep_their_partitions_out_of_git():
     tracked = set(subprocess.run(["git", "ls-files", "evals"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split())
     for manifest in sorted((ROOT / "evals").rglob("manifest.json")):
         if "mirror" not in json.loads(manifest.read_text(encoding="utf-8")): continue
-        leaked = [f for f in tracked if f.startswith(str(manifest.parent.relative_to(ROOT)) + "/") and f.endswith(".jsonl")]
+        leaked = [f for f in tracked if f.startswith(manifest.parent.relative_to(ROOT).as_posix() + "/") and f.endswith(".jsonl")]   # git ls-files prints posix paths on every OS
         assert not leaked, f"{manifest.parent} names a private mirror but tracks partitions: {leaked}"
 
 
@@ -74,10 +77,10 @@ def test_single_home(what, pattern, allowed):
     regex = re.compile(pattern)
     offenders = []
     for path in sources():
-        rel = str(path.relative_to(ROOT))
+        rel = path.relative_to(ROOT).as_posix()   # the allowlists are written posix-style; local separators are not
         if rel in allowed:
             continue
-        for n, line in enumerate(path.read_text().splitlines(), 1):
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             code = line.split("#", 1)[0]
             if regex.search(code):
                 offenders.append(f"{rel}:{n}: {line.strip()}")
